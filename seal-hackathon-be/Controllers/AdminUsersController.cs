@@ -50,6 +50,9 @@ namespace SEAL.NET.Controllers
                     user.Id,
                     user.FullName,
                     user.Email,
+                    studentType = user.StudentType == null ? null : user.StudentType.ToString(),
+                    user.StudentCode,
+                    user.SchoolName,
                     user.IsApproved,
                     user.CreatedAt,
                     roles
@@ -78,6 +81,9 @@ namespace SEAL.NET.Controllers
                     user.Id,
                     user.FullName,
                     user.Email,
+                    studentType = user.StudentType == null ? null : user.StudentType.ToString(),
+                    user.StudentCode,
+                    user.SchoolName,
                     user.CreatedAt,
                     roles
                 });

@@ -1,8 +1,10 @@
-﻿
+﻿using System.ComponentModel.DataAnnotations;
+
 namespace SEAL.NET.Models.Entities
 {
     public class JudgeAssignment
     {
+        [Key]
         public Guid AssignmentId { get; set; } = Guid.NewGuid();
 
         public Guid? RoundId { get; set; }

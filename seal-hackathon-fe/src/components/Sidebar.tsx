@@ -8,6 +8,7 @@ import {
   Cloud, Tag, Target, Send, Star, Shield, Menu, X, Search
 } from "lucide-react";
 import styles from "./Sidebar.module.css";
+import { clearAuthSession } from "@/lib/api";
 
 const NAV_SECTIONS = [
   {
@@ -89,7 +90,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
+    clearAuthSession();
     router.push("/auth/login");
   };
 

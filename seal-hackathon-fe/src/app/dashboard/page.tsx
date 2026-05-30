@@ -8,6 +8,7 @@ import {
 import Link from "next/link";
 import styles from "./page.module.css";
 import { databaseService } from "../../services/databaseService";
+import { apiRequest } from "@/lib/api";
 
 const RECENT_ACTIVITY = [
   { icon: Users,       text: "Team **CodeCraft** registered for Track A",        time: "2m ago",   type: "team" },
@@ -38,9 +39,34 @@ export default function DashboardPage() {
   const [metrics, setMetrics] = useState<any>(null);
 
   useEffect(() => {
-    // Load from local storage DB
-    setEvents(databaseService.getEvents());
-    setMetrics(databaseService.getDashboardMetrics());
+    const loadDashboard = async () => {
+      try {
+        const data = await apiRequest<any[]>("/Events", { auth: false });
+        const mappedEvents = data.map((event) => ({
+          id: event.eventId,
+          name: event.eventName,
+          status: event.status === "Ongoing" ? "Active" : event.status,
+          currentRound: event.rounds?.[0]?.roundName,
+          teamsCount: event.categories?.reduce((sum: number, category: any) => sum + (category.teamCount ?? 0), 0) ?? 0,
+          tracksCount: event.categories?.length ?? 0,
+          endDate: event.endDate,
+        }));
+
+        setEvents(mappedEvents);
+        setMetrics({
+          activeEvents: mappedEvents.filter((event) => event.status === "Active").length,
+          totalTeams: mappedEvents.reduce((sum, event) => sum + event.teamsCount, 0),
+          pendingApprovals: 0,
+          upcomingEvent: mappedEvents[0]?.name ?? "SEAL Hackathon",
+        });
+      } catch {
+        const fallbackEvents = databaseService.getEvents();
+        setEvents(fallbackEvents);
+        setMetrics(databaseService.getDashboardMetrics());
+      }
+    };
+
+    loadDashboard();
   }, []);
 
   const filteredEvents = useMemo(() => {
@@ -133,7 +159,7 @@ export default function DashboardPage() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               {filteredEvents.map((ev) => (
-                <Link key={ev.id} href={`/dashboard/events`} style={{ textDecoration: "none" }}>
+                <Link key={ev.id} href={`/dashboard/events/${ev.id}`} style={{ textDecoration: "none" }}>
                   <div className={`glass-card ${styles.eventCard}`}>
                     <div className={styles.eventTop}>
                       <h4 className={styles.eventName}>{ev.name}</h4>

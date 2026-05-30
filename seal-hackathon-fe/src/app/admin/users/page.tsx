@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Users, UserPlus, CheckCircle, XCircle, Mail, Shield, Building2 } from "lucide-react";
 import { App, Table, Tag, Button, Modal, Form, Input, Select, DatePicker } from "antd";
+import { apiRequest } from "@/lib/api";
 
 export default function UsersPage() {
   const { message } = App.useApp();
@@ -9,11 +10,27 @@ export default function UsersPage() {
   const [activeTab, setActiveTab] = useState("pending");
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  const [users, setUsers] = useState([
-    { id: "1", name: "Nguyen Anh Tuan", email: "tuanna@fpt.edu.vn", type: "Local (FPT)", status: "Pending", uni: "FPT University" },
-    { id: "2", name: "Tran Thi Binh", email: "binhtt@gmail.com", type: "External", status: "Pending", uni: "HCMUT" },
-    { id: "3", name: "Le Van Cuong", email: "cuonglv@fpt.edu.vn", type: "Local (FPT)", status: "Approved", uni: "FPT University" },
-  ]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const loadUsers = async () => {
+    setLoading(true);
+    try {
+      const data = await apiRequest<any[]>("/admin/users");
+      setUsers(data.map((user) => ({
+        id: user.id,
+        name: user.fullName,
+        email: user.email,
+        type: user.studentType ?? user.roles?.join(", ") ?? "Member",
+        status: user.isApproved ? "Approved" : "Pending",
+        uni: user.schoolName ?? "-",
+      })));
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "Could not load users.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const userStr = localStorage.getItem("currentUser");
@@ -23,14 +40,28 @@ export default function UsersPage() {
     }
   }, []);
 
-  const handleApprove = (id: string) => {
-    setUsers(users.map(u => u.id === id ? { ...u, status: "Approved" } : u));
-    message.success("User approved successfully");
+  useEffect(() => {
+    if (isAdmin) loadUsers();
+  }, [isAdmin]);
+
+  const handleApprove = async (id: string) => {
+    try {
+      await apiRequest(`/admin/users/${id}/approve`, { method: "PUT" });
+      message.success("User approved successfully");
+      await loadUsers();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "Could not approve user.");
+    }
   };
 
-  const handleReject = (id: string) => {
-    setUsers(users.filter(u => u.id !== id));
-    message.success("User rejected and removed");
+  const handleReject = async (id: string) => {
+    try {
+      await apiRequest(`/admin/users/${id}/reject`, { method: "PUT" });
+      message.success("User rejected successfully");
+      await loadUsers();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "Could not reject user.");
+    }
   };
 
   const handleCreateJudge = (values: any) => {
@@ -96,6 +127,7 @@ export default function UsersPage() {
           dataSource={activeTab === "pending" ? users.filter(u => u.status === "Pending") : users.filter(u => u.status === "Approved")} 
           columns={columns} 
           rowKey="id" 
+          loading={loading}
           pagination={false}
         />
       </div>

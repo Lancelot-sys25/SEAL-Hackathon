@@ -6,6 +6,7 @@ import styles from "./TopBar.module.css";
 import Link from "next/link";
 import { ThemeContext } from "./ThemeProvider";
 import { App, Modal, Input } from "antd";
+import { clearAuthSession } from "@/lib/api";
 
 const DEFAULT_NOTIFS = [
   { id: 1, title: "New team registered", desc: "Team Alpha joined SEAL Spring 2026", time: "2m ago", unread: true },
@@ -162,7 +163,7 @@ export default function TopBar({ onMenuToggle, sidebarCollapsed }: TopBarProps) 
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
+    clearAuthSession();
     router.push("/auth/login");
   };
 
