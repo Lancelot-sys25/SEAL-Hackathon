@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Target, Clock, CheckCircle, AlertCircle, ChevronRight, Filter } from "lucide-react";
 import Link from "next/link";
 

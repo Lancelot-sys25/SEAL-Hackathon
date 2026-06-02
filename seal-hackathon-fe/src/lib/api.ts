@@ -73,11 +73,13 @@ export function toCurrentUser(user: any): CurrentUser {
 export function saveAuthSession(
   payload: {
     token: string;
+    expiration?: string;
     user: {
       id: string;
       fullName: string;
       email: string;
       roles: string[];
+      [key: string]: any;
     };
   },
   remember: boolean,

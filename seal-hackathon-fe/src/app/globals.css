@@ -147,6 +147,10 @@ a:hover { color: var(--color-primary); }
   border-color: rgba(99,102,241,0.35);
 }
 
+.glass-grid {
+  display: grid;
+}
+
 /* ─── Buttons ────────────────────────────────────────────── */
 .btn {
   display: inline-flex;

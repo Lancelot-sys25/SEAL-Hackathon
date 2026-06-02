@@ -187,14 +187,14 @@ export default function TeamsPage() {
       if (isAccepted) {
         if (isLeader) {
           notification.success({
-            message: "Invitation Accepted!",
+            title: "Invitation Accepted!",
             description: `${target} has accepted your invitation and joined the team!`,
             duration: 5,
             placement: "topRight"
           });
         } else {
           notification.info({
-            message: "Chờ phê duyệt",
+            title: "Chờ phê duyệt",
             description: `${target} đã đồng ý tham gia! Đang chờ Trưởng nhóm phê duyệt.`,
             duration: 6,
             placement: "topRight"
@@ -215,7 +215,7 @@ export default function TeamsPage() {
         const reasons = ["I'm in another team.", "I'm busy.", "Skills don't match."];
         const reason = reasons[Math.floor(Math.random() * reasons.length)];
         notification.error({
-          message: "Invitation Declined",
+          title: "Invitation Declined",
           description: `${target} declined. Reason: "${reason}"`,
           duration: 7,
           placement: "topRight"

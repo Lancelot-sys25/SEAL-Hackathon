@@ -40,7 +40,11 @@ export default function AdminTeamsPage() {
   };
 
   const filteredTeams = teams.filter(t => {
-    const matchFilter = filter === "All" || t.status === filter || (filter === "Submitted" && t.status === "Submitted") || (filter === "Pending" && t.status === "Pending");
+    let matchFilter = filter === "All";
+    if (filter === "Pending") matchFilter = t.status === "Pending";
+    else if (filter === "Submitted") matchFilter = t.status === "Submitted";
+    else if (filter === "Late") matchFilter = t.status === "Late" || t.status === "Rejected";
+
     const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) || t.track.toLowerCase().includes(search.toLowerCase());
     return matchFilter && matchSearch;
   });
@@ -54,19 +58,18 @@ export default function AdminTeamsPage() {
           <h1 className="page-title">Quản Lý Nhóm Dự Thi</h1>
           <p className="page-subtitle">Duyệt và theo dõi tất cả các nhóm tham gia hệ thống</p>
         </div>
-        <button className="btn btn-primary" onClick={() => message.info("Chức năng thêm nhóm bằng tay đang phát triển.")}>
-          <Plus size={16} style={{ marginRight: "0.5rem" }} /> Tạo Nhóm Mới
-        </button>
       </div>
 
       <div className="glass-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem", marginBottom: "2rem", flexShrink: 0 }}>
         {[
-          { label: "Tổng Số Nhóm", val: teams.length, color: "var(--color-primary)" },
-          { label: "Chờ Duyệt (Pending)", val: teams.filter(t => t.status === "Pending").length, color: "#f59e0b" },
-          { label: "Đã Duyệt (Submitted)", val: teams.filter(t => t.status === "Submitted").length, color: "#10b981" },
-          { label: "Nộp Trễ / Vấn Đề", val: teams.filter(t => t.status === "Late" || t.status === "Rejected").length, color: "#ef4444" },
+          { label: "Tổng Số Nhóm", val: teams.length, color: "var(--color-primary)", filterValue: "All" },
+          { label: "Chờ Duyệt (Pending)", val: teams.filter(t => t.status === "Pending").length, color: "#f59e0b", filterValue: "Pending" },
+          { label: "Đã Duyệt (Submitted)", val: teams.filter(t => t.status === "Submitted").length, color: "#10b981", filterValue: "Submitted" },
+          { label: "Nộp Trễ / Vấn Đề", val: teams.filter(t => t.status === "Late" || t.status === "Rejected").length, color: "#ef4444", filterValue: "Late" },
         ].map(s => (
-          <div key={s.label} className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", padding: "1.25rem" }}>
+          <div key={s.label} className="glass-card" 
+               style={{ display: "flex", flexDirection: "column", gap: "0.5rem", padding: "1.25rem", cursor: "pointer", border: filter === s.filterValue ? `1px solid ${s.color}` : undefined }} 
+               onClick={() => setFilter(s.filterValue)}>
             <div style={{ fontSize: "2rem", fontWeight: 800, fontFamily: "var(--font-display)", color: s.color, lineHeight: 1 }}>{s.val}</div>
             <div style={{ fontSize: "0.85rem", color: "var(--color-text-3)", fontWeight: 500 }}>{s.label}</div>
           </div>
