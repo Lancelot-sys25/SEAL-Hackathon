@@ -12,12 +12,11 @@ export type CurrentUser = {
   email: string;
   role: string;
   roles: string[];
+  phoneNumber?: string | null;
+  studentCode?: string | null;
+  schoolName?: string | null;
+  studentType?: string | null;
 };
-
-function getToken() {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("seal_token") ?? sessionStorage.getItem("seal_token");
-}
 
 async function parseResponse<T>(response: Response): Promise<T> {
   const text = await response.text();
@@ -36,71 +35,106 @@ async function parseResponse<T>(response: Response): Promise<T> {
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}) {
-  const token = getToken();
   const headers = new Headers(options.headers);
 
   if (!headers.has("Content-Type") && options.body) {
     headers.set("Content-Type", "application/json");
   }
 
-  if (options.auth !== false && token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers,
+    credentials: "include",
   });
 
   return parseResponse<T>(response);
 }
 
-export function toCurrentUser(user: any): CurrentUser {
+export function toCurrentUser(user: {
+  id: string;
+  fullName?: string;
+  name?: string;
+  email: string;
+  roles?: string[];
+  role?: string;
+  phoneNumber?: string | null;
+  studentCode?: string | null;
+  schoolName?: string | null;
+  studentType?: string | null;
+}): CurrentUser {
   const roles = user.roles?.length ? user.roles : [user.role ?? "Member"];
   const fullName = user.fullName ?? user.name ?? user.email;
 
   return {
-    ...user,
     id: user.id,
     name: fullName,
     fullName,
     email: user.email,
     role: roles[0] ?? "Member",
     roles,
+    phoneNumber: user.phoneNumber,
+    studentCode: user.studentCode,
+    schoolName: user.schoolName,
+    studentType: user.studentType,
   };
 }
 
 export function saveAuthSession(
   payload: {
-    token: string;
-    expiration?: string;
     user: {
       id: string;
-      fullName: string;
+      fullName?: string;
+      name?: string;
       email: string;
-      roles: string[];
-      [key: string]: any;
+      roles?: string[];
+      role?: string;
+      phoneNumber?: string | null;
+      studentCode?: string | null;
+      schoolName?: string | null;
+      studentType?: string | null;
     };
   },
   remember: boolean,
 ) {
   const currentUser = toCurrentUser(payload.user);
-  const tokenStorage = remember ? localStorage : sessionStorage;
+  const uiStorage = remember ? localStorage : sessionStorage;
   const otherStorage = remember ? sessionStorage : localStorage;
 
-  tokenStorage.setItem("seal_token", payload.token);
-  otherStorage.removeItem("seal_token");
-  tokenStorage.setItem("currentUser", JSON.stringify(currentUser));
+  uiStorage.setItem("currentUser", JSON.stringify(currentUser));
   otherStorage.removeItem("currentUser");
   window.dispatchEvent(new Event("storage"));
 
   return currentUser;
 }
 
-export function clearAuthSession() {
+export async function fetchCurrentUser() {
+  const user = await apiRequest<{
+    id: string;
+    fullName: string;
+    email: string;
+    roles: string[];
+    phoneNumber?: string | null;
+    studentCode?: string | null;
+    schoolName?: string | null;
+    studentType?: string | null;
+  }>("/Auth/me");
+
+  const currentUser = toCurrentUser(user);
+  localStorage.setItem("currentUser", JSON.stringify(currentUser));
+  sessionStorage.removeItem("currentUser");
+  window.dispatchEvent(new Event("storage"));
+
+  return currentUser;
+}
+
+export async function clearAuthSession() {
   localStorage.removeItem("currentUser");
   sessionStorage.removeItem("currentUser");
-  localStorage.removeItem("seal_token");
-  sessionStorage.removeItem("seal_token");
   window.dispatchEvent(new Event("storage"));
+
+  try {
+    await apiRequest("/Auth/logout", { method: "POST", auth: false });
+  } catch {
+    // Local UI state is already cleared; logout may be unavailable on older backends.
+  }
 }

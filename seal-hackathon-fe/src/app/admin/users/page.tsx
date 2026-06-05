@@ -1,28 +1,57 @@
-"use client";
-import { useState, useEffect } from "react";
+﻿"use client";
+import React, { useState, useEffect, useCallback } from "react";
 import { Users, UserPlus, CheckCircle, XCircle, Mail, Shield, Building2 } from "lucide-react";
-import { App, Table, Tag, Button, Modal, Form, Input, Select, DatePicker } from "antd";
-import { apiRequest } from "@/lib/api";
+import { App, Table, Tag, Button, Modal, Form, Input } from "antd";
+import { apiRequest, fetchCurrentUser } from "@/lib/api";
+
+interface UserItem {
+  id: string;
+  name: string;
+  email: string;
+  type: string;
+  status: string;
+  uni: string;
+}
+
+interface BackendUser {
+  id: string;
+  fullName: string;
+  email: string;
+  studentType?: string | null;
+  roles?: string[];
+  isApproved: boolean;
+  schoolName?: string | null;
+}
+
+interface CreatedJudge {
+  email: string;
+  password: string;
+  fullName?: string;
+  company?: string;
+}
+
+interface CreateJudgeValues {
+  name: string;
+  email: string;
+  company?: string;
+}
 
 export default function UsersPage() {
   const { message } = App.useApp();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const [activeTab, setActiveTab] = useState("pending");
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [createdJudge, setCreatedJudge] = useState<CreatedJudge | null>(null);
 
-  const mockAdminUsers = [
-    { id: "1", fullName: "Nguyễn Văn A", email: "a@fpt.edu.vn", studentType: "FPT", studentCode: "SE160000", schoolName: "FPT University", isApproved: true, createdAt: "2026-05-10T10:00:00Z", roles: ["Member"] },
-    { id: "2", fullName: "Trần Thị B", email: "b@gmail.com", studentType: "NonFPT", studentCode: null, schoolName: "Đại học Bách Khoa", isApproved: false, createdAt: "2026-05-11T14:30:00Z", roles: ["Member"] },
-    { id: "3", fullName: "Dr. Lê Vũ", email: "levu@fpt.edu.vn", studentType: null, studentCode: null, schoolName: "FPT", isApproved: true, createdAt: "2026-05-01T09:00:00Z", roles: ["Judge"] }
-  ];
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiRequest<any[]>("/admin/users");
+      const data = await apiRequest<BackendUser[]>("/admin/users");
       setUsers(data.map((user) => ({
         id: user.id,
         name: user.fullName,
@@ -32,31 +61,28 @@ export default function UsersPage() {
         uni: user.schoolName ?? "-",
       })));
     } catch (err) {
-      // Fallback to strict mock data matching AdminUsersController DTO
-      setUsers(mockAdminUsers.map((user) => ({
-        id: user.id,
-        name: user.fullName,
-        email: user.email,
-        type: user.studentType ?? user.roles?.join(", ") ?? "Member",
-        status: user.isApproved ? "Approved" : "Pending",
-        uni: user.schoolName ?? "-",
-      })));
+      message.error(err instanceof Error ? err.message : "Could not load users.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [message]);
 
   useEffect(() => {
-    const userStr = (localStorage.getItem("currentUser") || sessionStorage.getItem("currentUser"));
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      if (user.roles?.includes("Admin") || user.role === "Admin") setIsAdmin(true);
-    }
+    fetchCurrentUser()
+      .then((user) => setIsAdmin(user.roles.includes("Admin")))
+      .catch(() => setIsAdmin(false))
+      .finally(() => setAuthChecked(true));
   }, []);
 
   useEffect(() => {
-    if (isAdmin) loadUsers();
-  }, [isAdmin]);
+    if (isAdmin) {
+      const trigger = async () => {
+        await Promise.resolve();
+        void loadUsers();
+      };
+      void trigger();
+    }
+  }, [isAdmin, loadUsers]);
 
   const handleApprove = async (id: string) => {
     try {
@@ -64,8 +90,7 @@ export default function UsersPage() {
       message.success("User approved successfully");
       await loadUsers();
     } catch (err) {
-      message.success("User approved successfully");
-      setUsers(users.map(u => u.id === id ? { ...u, status: "Approved" } : u));
+      message.error(err instanceof Error ? err.message : "Could not approve user.");
     }
   };
 
@@ -75,45 +100,65 @@ export default function UsersPage() {
       message.success("User rejected successfully");
       await loadUsers();
     } catch (err) {
-      message.success("User rejected successfully");
-      setUsers(users.filter(u => u.id !== id));
+      message.error(err instanceof Error ? err.message : "Could not reject user.");
     }
   };
 
-  const handleCreateJudge = (values: any) => {
-    message.success(`Guest Judge ${values.name} created! Email sent with temporary credentials.`);
-    setIsModalOpen(false);
+  const handleCreateJudge = async (values: CreateJudgeValues) => {
+    setSubmitting(true);
+    try {
+      const res = await apiRequest<CreatedJudge>("/admin/users/create-judge", {
+        method: "POST",
+        body: JSON.stringify({
+          name: values.name,
+          email: values.email,
+          company: values.company
+        })
+      });
+      setCreatedJudge(res);
+      message.success("Guest judge account generated successfully!");
+      await loadUsers();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "Could not create guest judge.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const columns = [
-    { title: 'Name', dataIndex: 'name', key: 'name', render: (t: string) => <div style={{ fontWeight: 600 }}>{t}</div> },
+    { title: 'Name', dataIndex: 'name', key: 'name', render: (t: string) => <b>{t}</b> },
     { title: 'Email', dataIndex: 'email', key: 'email' },
     { title: 'Type', dataIndex: 'type', key: 'type', render: (t: string) => (
-      <span className="glass-badge">{t}</span>
+      <Tag color={t.includes("FPT") ? "orange" : "blue"}>{t}</Tag>
     )},
     { title: 'University', dataIndex: 'uni', key: 'uni' },
     { title: 'Status', dataIndex: 'status', key: 'status', render: (t: string) => (
-      <span className={`glass-badge ${t === "Pending" ? "warning" : "success"}`}>{t}</span>
+      <Tag color={t === "Pending" ? "warning" : "success"}>{t}</Tag>
     )},
     {
-      title: 'Action', key: 'action', render: (_: any, record: any) => (
+      title: 'Action', key: 'action', render: (_: unknown, record: UserItem) => (
         record.status === "Pending" ? (
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-sm" style={{ background: "rgba(16,185,129,0.1)", color: "#34d399", padding: "0.4rem 0.8rem", border: "1px solid rgba(16,185,129,0.2)" }} onClick={() => handleApprove(record.id)}>
-              <CheckCircle size={14} style={{ marginRight: 4 }} /> Approve
-            </button>
-            <button className="btn btn-sm" style={{ background: "rgba(244,63,94,0.1)", color: "#f43f5e", padding: "0.4rem 0.8rem", border: "1px solid rgba(244,63,94,0.2)" }} onClick={() => handleReject(record.id)}>
-              <XCircle size={14} style={{ marginRight: 4 }} /> Reject
-            </button>
+            <Button size="small" type="primary" onClick={() => handleApprove(record.id)} icon={<CheckCircle size={14} />}>Approve</Button>
+            <Button size="small" danger onClick={() => handleReject(record.id)} icon={<XCircle size={14} />}>Reject</Button>
           </div>
         ) : <span style={{ color: "var(--color-text-3)" }}>No actions</span>
       )
     }
   ];
 
+  if (!authChecked) {
+    return (
+      <div className="empty-state">
+        <span className="spinner" />
+        <div className="empty-title">Checking access</div>
+      </div>
+    );
+  }
+
   if (!isAdmin) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: "var(--color-text-1)" }}>
+      <div style={{ padding: 40, textAlign: "center" }}>
         <Shield size={48} style={{ color: "var(--color-danger)", marginBottom: 16 }} />
         <h2>Access Denied</h2>
         <p>This page is restricted to Event Administrators only.</p>
@@ -122,18 +167,18 @@ export default function UsersPage() {
   }
 
   return (
-    <div style={{ maxWidth: 1100, height: "calc(100vh - 100px)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexShrink: 0 }}>
+    <div>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 className="page-title"><Users size={28} /> User Management</h1>
           <p className="page-subtitle">Approve participants and manage guest judges</p>
         </div>
         <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-          <UserPlus size={16} style={{ marginRight: "0.5rem" }} /> Create Guest Judge
+          <UserPlus size={16} /> Create Guest Judge
         </button>
       </div>
 
-      <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem", flexShrink: 0 }}>
+      <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem" }}>
         <button className={`btn ${activeTab === "pending" ? "btn-primary" : "btn-secondary"}`} onClick={() => setActiveTab("pending")}>
           Pending Approvals
         </button>
@@ -142,9 +187,8 @@ export default function UsersPage() {
         </button>
       </div>
 
-      <div className="glass-card" style={{ padding: 0, overflowY: "auto", flex: 1 }}>
+      <div className="card">
         <Table 
-          className="custom-antd-table"
           dataSource={activeTab === "pending" ? users.filter(u => u.status === "Pending") : users.filter(u => u.status === "Approved")} 
           columns={columns} 
           rowKey="id" 
@@ -154,29 +198,66 @@ export default function UsersPage() {
       </div>
 
       <Modal 
-        title={<div style={{ color: "var(--color-text-1)", display: "flex", alignItems: "center" }}><Shield size={18} style={{ marginRight: 8 }} /> Create Guest Judge Account</div>}
+        title={<><Shield size={18} style={{ marginRight: 8, verticalAlign: 'middle', display: 'inline' }} /> Create Guest Judge Account</>}
         open={isModalOpen} 
-        onCancel={() => setIsModalOpen(false)}
+        onCancel={() => { setIsModalOpen(false); setCreatedJudge(null); }}
         footer={null}
-        wrapClassName="glass-modal"
       >
-        <Form layout="vertical" onFinish={handleCreateJudge} style={{ marginTop: 20 }}>
-          <Form.Item name="name" label={<span style={{ color: "var(--color-text-2)" }}>Judge Name</span>} rules={[{ required: true }]}>
-            <Input prefix={<Users size={16} style={{ color: "var(--color-text-3)" }} />} placeholder="Dr. John Doe" style={{ background: "rgba(0,0,0,0.2)", color: "var(--color-text-1)", border: "1px solid var(--color-border)" }} />
-          </Form.Item>
-          <Form.Item name="email" label={<span style={{ color: "var(--color-text-2)" }}>Email Address</span>} rules={[{ required: true, type: 'email' }]}>
-            <Input prefix={<Mail size={16} style={{ color: "var(--color-text-3)" }} />} placeholder="judge@example.com" style={{ background: "rgba(0,0,0,0.2)", color: "var(--color-text-1)", border: "1px solid var(--color-border)" }} />
-          </Form.Item>
-          <Form.Item name="company" label={<span style={{ color: "var(--color-text-2)" }}>Company / University</span>} rules={[{ required: true }]}>
-            <Input prefix={<Building2 size={16} style={{ color: "var(--color-text-3)" }} />} placeholder="Tech Corp" style={{ background: "rgba(0,0,0,0.2)", color: "var(--color-text-1)", border: "1px solid var(--color-border)" }} />
-          </Form.Item>
-          <div style={{ color: "var(--color-text-3)", fontSize: "0.85rem", marginBottom: 20 }}>
-            * Temporary credentials will be emailed securely. The account will only have access to assigned judging rounds.
+        {createdJudge ? (
+          <div style={{ padding: "10px 0" }}>
+            <div style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)", padding: "1rem", borderRadius: "8px", marginBottom: "1rem" }}>
+              <strong style={{ color: "#10b981", display: "block", marginBottom: "0.5rem" }}>Account Generated Successfully!</strong>
+              <p style={{ fontSize: "0.85rem", color: "var(--color-text-2)", margin: 0 }}>
+                Please copy the temporary credentials below. The password will only be shown once.
+              </p>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: "1rem" }}>
+              <label className="form-label">Email Address</label>
+              <Input.Search
+                value={createdJudge.email}
+                enterButton="Copy"
+                onSearch={() => {
+                  navigator.clipboard.writeText(createdJudge.email);
+                  message.success("Email copied!");
+                }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Temporary Password</label>
+              <Input.Search
+                value={createdJudge.password}
+                enterButton="Copy"
+                onSearch={() => {
+                  navigator.clipboard.writeText(createdJudge.password);
+                  message.success("Password copied!");
+                }}
+              />
+            </div>
+
+            <Button type="primary" block style={{ marginTop: "1.5rem" }} onClick={() => { setIsModalOpen(false); setCreatedJudge(null); }}>
+              Done
+            </Button>
           </div>
-          <button type="submit" className="btn btn-primary" style={{ width: "100%" }}>Generate Account</button>
-        </Form>
+        ) : (
+          <Form layout="vertical" onFinish={handleCreateJudge} style={{ marginTop: 20 }}>
+            <Form.Item name="name" label="Judge Name" rules={[{ required: true }]}>
+              <Input prefix={<Users size={16} />} placeholder="Dr. John Doe" />
+            </Form.Item>
+            <Form.Item name="email" label="Email Address" rules={[{ required: true, type: 'email' }]}>
+              <Input prefix={<Mail size={16} />} placeholder="judge@example.com" />
+            </Form.Item>
+            <Form.Item name="company" label="Company / University" rules={[{ required: true }]}>
+              <Input prefix={<Building2 size={16} />} placeholder="Tech Corp / FPT" />
+            </Form.Item>
+            <div style={{ color: "var(--color-text-3)", fontSize: "0.85rem", marginBottom: 20 }}>
+              * Temporary credentials will be generated securely. You will need to copy and share them with the guest judge.
+            </div>
+            <Button type="primary" htmlType="submit" loading={submitting} block>Generate Account</Button>
+          </Form>
+        )}
       </Modal>
     </div>
   );
 }
-

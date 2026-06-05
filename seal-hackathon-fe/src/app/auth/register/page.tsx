@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { App } from "antd";
-import { ArrowRight, Building2, CheckCircle, Code2, GraduationCap, Lock, Mail, Trophy, User } from "lucide-react";
+import { Building2, CheckCircle, Code2, GraduationCap, Lock, Mail, Trophy, User } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import styles from "../auth.module.css";
 import vnUniversities from "../../../data/vietnam_universities.json";
@@ -36,24 +36,24 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      // MOCK DATA FOR FRONTEND DEVELOPMENT
-      // Simulate API call to backend DTO structure
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      const payload = {
-        fullName: form.fullName,
-        email: form.email,
-        password: form.password,
-        studentType: studentType === "fpt" ? 0 : 1,
-        studentCode: form.studentId,
-        schoolName: studentType === "fpt" ? "FPT University" : (form.university === "Khác (Other / International)" ? form.customUniversity : form.university),
-      };
-      
-      const mockUsers = JSON.parse(localStorage.getItem("mock_users") || "[]");
-      mockUsers.push(payload);
-      localStorage.setItem("mock_users", JSON.stringify(mockUsers));
-      
-      console.log("Mock Register Payload:", payload);
+      const isCustomUniversity = form.university === "Other / International";
+
+      await apiRequest("/Auth/register", {
+        method: "POST",
+        auth: false,
+        body: JSON.stringify({
+          fullName: form.fullName,
+          email: form.email,
+          password: form.password,
+          studentType: studentType === "fpt" ? 0 : 1,
+          studentCode: form.studentId,
+          schoolName: studentType === "fpt"
+            ? "FPT University"
+            : isCustomUniversity
+              ? form.customUniversity
+              : form.university,
+        }),
+      });
 
       message.success("Account created successfully. Please login.");
       router.push("/auth/login");
@@ -153,11 +153,11 @@ export default function RegisterPage() {
                           {vnUniversities.map((uni: string, idx: number) => (
                             <option key={idx} value={uni} />
                           ))}
-                          <option value="Khác (Other / International)" />
+                          <option value="Other / International" />
                         </datalist>
                       </div>
 
-                      {form.university === "Khác (Other / International)" && (
+                      {form.university === "Other / International" && (
                         <div className="form-group">
                           <label className="form-label" htmlFor="customUni">Specify your University</label>
                           <input id="customUni" type="text" className="form-input" placeholder="Enter your international university name..." value={form.customUniversity} onChange={(e) => setForm({ ...form, customUniversity: e.target.value })} required />

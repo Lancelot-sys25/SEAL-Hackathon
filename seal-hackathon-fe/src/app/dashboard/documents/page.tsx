@@ -3,24 +3,34 @@ import { useState, useRef, useEffect } from "react";
 import { FileText, Download, Upload, Folder, MoreVertical } from "lucide-react";
 import { App } from "antd";
 
+type DocumentItem = {
+  name: string;
+  size: string;
+  date: string;
+  type: string;
+};
+
 export default function DocumentsPage() {
   const { message } = App.useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [docs, setDocs] = useState<any[]>([]);
+  const [docs, setDocs] = useState<DocumentItem[]>([]);
 
   useEffect(() => {
-    const defaultDocs = [
-      { name: "SEAL_Hackathon_Rulebook.pdf", size: "2.4 MB", date: "May 10", type: "pdf" },
-      { name: "Judging_Rubric_v2.xlsx", size: "1.1 MB", date: "May 12", type: "excel" },
-      { name: "Sponsorship_Deck.pptx", size: "5.6 MB", date: "May 15", type: "powerpoint" },
-    ];
-    const stored = localStorage.getItem("mock_documents");
-    if (stored) {
-      setDocs(JSON.parse(stored));
-    } else {
-      localStorage.setItem("mock_documents", JSON.stringify(defaultDocs));
-      setDocs(defaultDocs);
-    }
+    const id = window.setTimeout(() => {
+      const defaultDocs: DocumentItem[] = [
+        { name: "SEAL_Hackathon_Rulebook.pdf", size: "2.4 MB", date: "May 10", type: "pdf" },
+        { name: "Judging_Rubric_v2.xlsx", size: "1.1 MB", date: "May 12", type: "excel" },
+        { name: "Sponsorship_Deck.pptx", size: "5.6 MB", date: "May 15", type: "powerpoint" },
+      ];
+      const stored = localStorage.getItem("mock_documents");
+      if (stored) {
+        setDocs(JSON.parse(stored) as DocumentItem[]);
+      } else {
+        localStorage.setItem("mock_documents", JSON.stringify(defaultDocs));
+        setDocs(defaultDocs);
+      }
+    }, 0);
+    return () => window.clearTimeout(id);
   }, []);
 
   const handleUploadClick = () => {
