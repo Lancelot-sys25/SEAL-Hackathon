@@ -19,6 +19,7 @@ export type CurrentUser = {
   studentType?: string | null;
   developerRole?: string | null;
   programmingLanguages?: string[];
+  requestedRole?: string | null;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -168,6 +169,7 @@ export function toCurrentUser(user: {
   studentType?: string | null;
   developerRole?: string | null;
   programmingLanguages?: string[];
+  requestedRole?: string | null;
 }): CurrentUser {
   const roles = user.roles?.length ? user.roles : [user.role ?? "Member"];
   const fullName = user.fullName ?? user.name ?? user.email;
@@ -185,6 +187,7 @@ export function toCurrentUser(user: {
     studentType: user.studentType,
     developerRole: user.developerRole,
     programmingLanguages: user.programmingLanguages ?? [],
+    requestedRole: user.requestedRole,
   };
 }
 
@@ -205,6 +208,7 @@ export async function fetchCurrentUser() {
     studentType?: string | null;
     developerRole?: string | null;
     programmingLanguages?: string[];
+    requestedRole?: string | null;
   }>("/Auth/me");
 
   return toCurrentUser(user);

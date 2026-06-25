@@ -107,6 +107,44 @@ export default function TeamsPage() {
   const [memberToKick, setMemberToKick] = useState<TeamMember | null>(null);
   const [kickReason, setKickReason] = useState("");
 
+  const [memberSuggestions, setMemberSuggestions] = useState<string[]>([]);
+  const [showMemberSuggestions, setShowMemberSuggestions] = useState(false);
+
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setMemberSuggestions([]);
+      setShowMemberSuggestions(false);
+    };
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, []);
+
+  const handleMemberInputChange = async (val: string) => {
+    setMemberCodeToAdd(val);
+    if (!val.trim() || !myTeam?.category?.categoryId) {
+      setMemberSuggestions([]);
+      setShowMemberSuggestions(false);
+      return;
+    }
+    setShowMemberSuggestions(true);
+    try {
+      const res = await apiRequest<string[]>(
+        `/teams/members/search?query=${encodeURIComponent(val)}&categoryId=${myTeam.category.categoryId}`
+      );
+      setMemberSuggestions(res);
+    } catch {
+      setMemberSuggestions([]);
+    }
+  };
+
+  const selectMemberSuggestion = (email: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setMemberCodeToAdd(email);
+    setMemberSuggestions([]);
+    setShowMemberSuggestions(false);
+  };
+
   const categories = useMemo(
     () =>
       events.flatMap((event) =>
@@ -272,6 +310,8 @@ export default function TeamsPage() {
 
       message.success("Invitation sent successfully.");
       setMemberCodeToAdd("");
+      setMemberSuggestions([]);
+      setShowMemberSuggestions(false);
       await loadPage();
     } catch (err) {
       message.error(err instanceof Error ? err.message : "Could not invite member.");
@@ -944,14 +984,30 @@ export default function TeamsPage() {
           </h3>
           <div className="form-group">
             <label className="form-label" htmlFor="addMember">Student Code or Email</label>
-            <div style={{ display: "flex", gap: "0.75rem" }}>
-              <input
-                id="addMember"
-                className="form-input"
-                placeholder="Approved student code or email"
-                value={memberCodeToAdd}
-                onChange={(event) => setMemberCodeToAdd(event.target.value)}
-              />
+            <div style={{ display: "flex", gap: "0.75rem", position: "relative" }}>
+              <div style={{ flex: 1, position: "relative" }}>
+                <input
+                  id="addMember"
+                  className="form-input"
+                  placeholder="Approved student code or email"
+                  value={memberCodeToAdd}
+                  onChange={(event) => handleMemberInputChange(event.target.value)}
+                  onFocus={(event) => handleMemberInputChange(event.target.value)}
+                />
+                {showMemberSuggestions && memberSuggestions.length > 0 && (
+                  <ul className="suggestions-list">
+                    {memberSuggestions.map((email) => (
+                      <li
+                        key={email}
+                        className="suggestion-item"
+                        onMouseDown={(e) => selectMemberSuggestion(email, e)}
+                      >
+                        {email}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               <button className="btn btn-primary" disabled={!memberCodeToAdd.trim() || submitting} onClick={handleAddMember}>
                 <UserPlus size={15} /> Add
               </button>

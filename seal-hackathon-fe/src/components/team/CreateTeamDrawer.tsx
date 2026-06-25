@@ -55,6 +55,44 @@ export default function CreateTeamDrawer({ open, onClose, onSuccess, categories 
   const [loadingMentors, setLoadingMentors] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setSuggestions([]);
+      setActiveSuggestionIndex(null);
+    };
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, []);
+
+  const handleInputChange = async (index: number, val: string) => {
+    setMemberAt(index, val);
+    if (!val.trim()) {
+      setSuggestions([]);
+      setActiveSuggestionIndex(null);
+      return;
+    }
+    setActiveSuggestionIndex(index);
+    try {
+      const res = await apiRequest<string[]>(
+        `/teams/members/search?query=${encodeURIComponent(val)}&categoryId=${effectiveCategoryId}`
+      );
+      setSuggestions(res);
+    } catch {
+      setSuggestions([]);
+    }
+  };
+
+  const selectSuggestion = (index: number, email: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setMemberAt(index, email);
+    setSuggestions([]);
+    setActiveSuggestionIndex(null);
+  };
+
   // The "selected" category we render. If the leader hasn't picked one yet we
   // fall back to the first available — derived rather than copied into state to
   // avoid a setState-in-effect cascade.
@@ -237,15 +275,30 @@ export default function CreateTeamDrawer({ open, onClose, onSuccess, categories 
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {memberInputs.map((value, index) => (
-              <div key={index} style={{ display: "flex", gap: "0.5rem" }}>
-                <input
-                  className="form-input"
-                  style={{ flex: 1 }}
-                  placeholder={`Member ${index + 1} student code or email`}
-                  value={value}
-                  onChange={(e) => setMemberAt(index, e.target.value)}
-                  disabled={submitting}
-                />
+              <div key={index} style={{ display: "flex", gap: "0.5rem", position: "relative" }}>
+                <div style={{ flex: 1, position: "relative" }}>
+                  <input
+                    className="form-input"
+                    placeholder={`Member ${index + 1} student code or email`}
+                    value={value}
+                    onChange={(e) => handleInputChange(index, e.target.value)}
+                    onFocus={(e) => handleInputChange(index, e.target.value)}
+                    disabled={submitting}
+                  />
+                  {activeSuggestionIndex === index && suggestions.length > 0 && (
+                    <ul className="suggestions-list">
+                      {suggestions.map((email) => (
+                        <li
+                          key={email}
+                          className="suggestion-item"
+                          onMouseDown={(e) => selectSuggestion(index, email, e)}
+                        >
+                          {email}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
                 {memberInputs.length > 1 && (
                   <button
                     type="button"

@@ -1279,5 +1279,53 @@ namespace SEAL.NET.Services.Implementations
 
             return ServiceResult.OkMessage("Join request sent successfully.");
         }
+
+        public async Task<ServiceResult> SearchMemberEmailsAsync(Guid currentUserId, string query, Guid categoryId)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return ServiceResult.Ok(new List<string>());
+            }
+
+            var category = await _context.Categories.FirstOrDefaultAsync(c => c.CategoryId == categoryId);
+            if (category == null)
+                return ServiceResult.NotFound("Category not found.");
+
+            var eventId = category.EventId;
+
+            var categoryIdsInSameEvent = await _context.Categories
+                .Where(c => c.EventId == eventId)
+                .Select(c => c.CategoryId)
+                .ToListAsync();
+
+            var userIdsAlreadyJoined = await _context.TeamMembers
+                .Where(tm => categoryIdsInSameEvent.Contains(tm.Team.CategoryId))
+                .Select(tm => tm.UserId)
+                .ToListAsync();
+
+            var memberRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Member");
+            if (memberRole == null)
+            {
+                return ServiceResult.Ok(new List<string>());
+            }
+
+            var memberUserIdsQuery = _context.Set<IdentityUserRole<Guid>>()
+                .Where(ur => ur.RoleId == memberRole.Id)
+                .Select(ur => ur.UserId);
+
+            var queryLower = query.Trim().ToLower();
+
+            var matchingEmails = await _context.Users
+                .Where(u => u.IsApproved &&
+                            memberUserIdsQuery.Contains(u.Id) &&
+                            u.Id != currentUserId &&
+                            !userIdsAlreadyJoined.Contains(u.Id) &&
+                            u.Email != null && u.Email.ToLower().Contains(queryLower))
+                .Select(u => u.Email!)
+                .Take(10)
+                .ToListAsync();
+
+            return ServiceResult.Ok(matchingEmails);
+        }
     }
 }
