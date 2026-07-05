@@ -1,3 +1,82 @@
+# SEAL Hackathon
+
+SEAL Hackathon is a team full-stack project for managing hackathon and event workflows. The repository contains a .NET backend and a Next.js frontend, with modules for authentication, event management, team workflows, submissions, judging, ranking, analytics, documents, notifications, and mentor/judge support.
+
+## Repository Structure
+
+```text
+SEAL-Hackathon/
+  seal-hackathon-be/   # ASP.NET Core backend
+  seal-hackathon-fe/   # Next.js frontend
+  Screen-shot-be/      # Backend screenshots
+  Screen-shot-fe/      # Frontend screenshots
+```
+
+## Tech Stack
+
+### Backend
+
+- C# / .NET 8
+- ASP.NET Core Web API
+- Entity Framework Core
+- ASP.NET Core Identity / JWT Bearer authentication
+- PostgreSQL through Npgsql
+- Swagger / OpenAPI
+
+### Frontend
+
+- Next.js
+- React
+- TypeScript
+- Ant Design
+- Recharts
+- Framer Motion
+- Lucide React
+
+## Main Modules
+
+- Authentication and user profile
+- Admin user and team management
+- Event, round, track, category, and prize management
+- Team registration and member workflows
+- Submission management
+- Judge assignment, scoring, ranking, and feedback
+- Mentor workflows
+- Document management
+- Notifications
+- Analytics and audit logs
+- AI chatbot support
+
+## Run Backend Locally
+
+```bash
+cd seal-hackathon-be
+dotnet restore
+dotnet build
+dotnet run
+```
+
+Before running the backend, configure the database connection string and JWT settings in local configuration or user secrets. Do not commit real secrets to the repository.
+
+## Run Frontend Locally
+
+```bash
+cd seal-hackathon-fe
+npm install
+npm run dev
+```
+
+The frontend is a Next.js application. Update the API base URL in the frontend environment/configuration files if the backend runs on a different local port.
+
+## Development Notes
+
+- Keep backend DTOs, services, repositories, and controllers aligned when adding a new feature.
+- Keep frontend pages/components consistent with the feature requirements below.
+- Use small commits with clear messages when working in a team.
+- Update this README when adding major modules, setup steps, or screenshots.
+
+---
+
 # Frontend Requirements
 
 > Ghi chu: Cac muc thieu mo ta hoac primary actor duoc danh dau la `TBD` de tiep tuc bo sung.
